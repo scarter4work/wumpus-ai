@@ -1,0 +1,169 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-games-table
+      author: system
+      changes:
+        - createTable:
+            tableName: games
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: player_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_time
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_time
+                  type: TIMESTAMP
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: arrows_remaining
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: current_room_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: create-rooms-table
+      author: system
+      changes:
+        - createTable:
+            tableName: rooms
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: north_room_id
+                  type: UUID
+              - column:
+                  name: east_room_id
+                  type: UUID
+              - column:
+                  name: south_room_id
+                  type: UUID
+              - column:
+                  name: west_room_id
+                  type: UUID
+              - column:
+                  name: has_wumpus
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+              - column:
+                  name: has_pit
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+              - column:
+                  name: has_bats
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+
+  - changeSet:
+      id: create-game-rooms-table
+      author: system
+      changes:
+        - createTable:
+            tableName: game_rooms
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: game_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: room_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: game_rooms
+            baseColumnNames: game_id
+            referencedTableName: games
+            referencedColumnNames: id
+            constraintName: fk_game_rooms_game_id
+        - addForeignKeyConstraint:
+            baseTableName: game_rooms
+            baseColumnNames: room_id
+            referencedTableName: rooms
+            referencedColumnNames: id
+            constraintName: fk_game_rooms_room_id
+
+  - changeSet:
+      id: create-game-visited-rooms-table
+      author: system
+      changes:
+        - createTable:
+            tableName: game_visited_rooms
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: game_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: room_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: visited_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: game_visited_rooms
+            baseColumnNames: game_id
+            referencedTableName: games
+            referencedColumnNames: id
+            constraintName: fk_game_visited_rooms_game_id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: game_visited_rooms
+            baseColumnNames: room_id
+            referencedTableName: rooms
+            referencedColumnNames: id
+            constraintName: fk_game_visited_rooms_room_id
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: game_visited_rooms
+            columnNames: game_id, room_id
+            constraintName: uk_game_visited_rooms_game_room

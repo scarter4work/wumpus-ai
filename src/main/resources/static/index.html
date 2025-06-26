@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Hunt the Wumpus</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+    <style type="text/tailwindcss">
+        body {
+            font-family: 'Arial', sans-serif;
+        }
+        .cave-grid-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            max-width: 600px;
+            margin: auto;
+            position: relative;
+        }
+        .cave-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 20px;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 5 / 4;
+        }
+        .cave-room {
+            background-color: #d1d5db;border: 2px solid #4b5563;border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #1f2937;aspect-ratio: 1 / 1;
+            position: relative;
+            z-index: 10;
+            transition: box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
+        }
+        .cave-room.shooting-targetable:hover {
+            box-shadow: 0 0 0 4px #fca5a5;cursor: pointer;
+            transform: scale(1.05);
+        }
+        .cave-room.shooting-selected {
+            background-color: #fca5a5;border-color: #ef4444;color: #7f1d1d;}
+        .player-indicator {
+            position: absolute;
+            top: -8px;
+            left: -8px;
+            width: 20px;
+            height: 20px;
+            background-color: #10b981;
+            border-radius: 50%;
+            border: 2px solid white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .player-indicator .material-icons {
+            font-size: 12px;
+            color: white;
+        }
+        .hazard-icon {
+            font-size: 1.8rem;
+        }
+        .wumpus .hazard-icon {
+            color: #ef4444;
+        }
+        .pit .hazard-icon {
+            color: #374151;}
+        .bat .hazard-icon {
+            color: #f59e0b;
+        }
+        .line-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            pointer-events: none;
+        }
+        .shooting-mode .controls button:not(.movement-control-for-shooting) {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .shooting-mode .actions #shoot-room {
+            display: none;
+        }
+        .shooting-mode .actions #shoot-arrow {
+            display: none;
+        }
+        .shooting-mode .actions #confirm-shot {
+            display: flex;
+        }
+        .shooting-mode .actions #cancel-shot {
+            display: flex;
+        }
+        #confirm-shot, #cancel-shot {
+            display: none;}
+    </style>
+</head>
+<body class="bg-gray-200 min-h-screen flex flex-col items-center justify-center p-4" id="game-body">
+<header class="mb-8 text-center">
+    <h1 class="text-4xl font-bold text-gray-800">Hunt the Wumpus</h1> {}
+    <p class="text-lg text-gray-700 mt-2">Navigate the caves and find the Wumpus!</p> {}
+</header>
+<main class="bg-white p-6 rounded-lg shadow-xl w-full max-w-3xl">
+    <div class="mb-6 p-4 bg-gray-100 border border-gray-300 rounded-md"> {}
+        <h2 class="text-xl font-semibold text-gray-700 mb-2">Game Status</h2> {}
+        <p class="text-gray-700" id="status-message">You are in room <span class="font-bold" id="current-room">1</span>. You have <span class="font-bold" id="arrow-count">3</span> arrows.</p>
+        <p class="text-amber-600 font-medium mt-1" id="hazard-warning"></p>
+        <p class="text-blue-600 font-medium mt-1" id="shooting-mode-status" style="display: none;">Shooting Mode: Select a direction with arrow keys or click a connected room. Target: <span class="font-bold" id="shooting-target-display">None</span></p>
+    </div>
+    <div class="mb-6 p-4 border-2 border-dashed border-sky-500 rounded-md bg-sky-50 min-h-[60px]">
+        <h3 class="text-lg font-semibold text-sky-700 mb-1">Messages</h3>
+        <p class="text-gray-700 italic" id="game-message-area">Welcome to Hunt the Wumpus!</p>
+    </div>
+    <div class="cave-grid-container mb-6">
+        <svg class="line-container" height="100%" id="cave-connections" width="100%"></svg>
+        <div class="cave-grid" id="cave-grid-display">
+        </div>
+    </div>
+    <div class="controls grid grid-cols-3 grid-rows-3 gap-2 mb-8 mt-4 w-48 mx-auto">
+        <button class="bg-gray-700 hover:bg-gray-800 text-white font-semibold py-3 px-4 rounded-lg shadow transition duration-150 ease-in-out flex items-center justify-center col-start-2 row-start-1 movement-control-for-shooting" id="move-north"> {}
+            <span class="material-icons">north</span>
+        </button>
+        <button class="bg-gray-700 hover:bg-gray-800 text-white font-semibold py-3 px-4 rounded-lg shadow transition duration-150 ease-in-out flex items-center justify-center col-start-1 row-start-2 movement-control-for-shooting" id="move-west"> {}
+            <span class="material-icons">west</span>
+        </button>
+        <div class="col-start-2 row-start-2"></div>
+        <button class="bg-gray-700 hover:bg-gray-800 text-white font-semibold py-3 px-4 rounded-lg shadow transition duration-150 ease-in-out flex items-center justify-center col-start-3 row-start-2 movement-control-for-shooting" id="move-east"> {}
+            <span class="material-icons">east</span>
+        </button>
+        <button class="bg-gray-700 hover:bg-gray-800 text-white font-semibold py-3 px-4 rounded-lg shadow transition duration-150 ease-in-out flex items-center justify-center col-start-2 row-start-3 movement-control-for-shooting" id="move-south"> {}
+            <span class="material-icons">south</span>
+        </button>
+    </div>
+    <div class="actions flex flex-col sm:flex-row gap-4">
+        <input class="flex-grow p-3 border border-gray-400 rounded-lg focus:ring-gray-600 focus:border-gray-600 transition" id="shoot-room" max="20" min="1" placeholder="Room # (or click Shoot)" type="number"/> {}
+        <button class="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-lg shadow transition duration-150 ease-in-out flex items-center justify-center" id="shoot-arrow"> {}
+            <span class="material-icons mr-2">ads_click</span> Prepare Shot
+        </button>
+        <button class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg shadow transition duration-150 ease-in-out items-center justify-center" id="confirm-shot"> {}
+            <span class="material-icons mr-2">check_circle</span> Confirm Shot
+        </button>
+        <button class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg shadow transition duration-150 ease-in-out items-center justify-center" id="cancel-shot"> {}
+            <span class="material-icons mr-2">cancel</span> Cancel Shot
+        </button>
+    </div>
+</main>
+<footer class="mt-8 text-center">
+    <button class="bg-slate-700 hover:bg-slate-800 text-white font-semibold py-2 px-6 rounded-lg shadow transition duration-150 ease-in-out" id="restart-game"> {}
+        Restart Game
+    </button>
+    <p class="text-sm text-gray-600 mt-4">© 2023 Wumpus Adventures Inc. All rights reserved.</p> {}
+</footer>
+<script>
+    const statusMessage = document.getElementById('status-message');
+    const currentRoomEl = document.getElementById('current-room');
+    const arrowCountEl = document.getElementById('arrow-count');
+    const hazardWarningEl = document.getElementById('hazard-warning');
+    const shootRoomInput = document.getElementById('shoot-room');
+    const caveGridDisplay = document.getElementById('cave-grid-display');
+    const connectionsSvg = document.getElementById('cave-connections');
+    const gameBody = document.getElementById('game-body');
+    const shootingModeStatusEl = document.getElementById('shooting-mode-status');
+    const shootingTargetDisplayEl = document.getElementById('shooting-target-display');
+    const shootArrowButton = document.getElementById('shoot-arrow');
+    const confirmShotButton = document.getElementById('confirm-shot');
+    const cancelShotButton = document.getElementById('cancel-shot');
+    const gameMessageArea = document.getElementById('game-message-area'); // Added message area element
+    const NUM_ROOMS = 20;
+    let currentRoom = 1;
+    let arrows = 3;
+    let playerRoom = 1;
+    let shootingMode = false;
+    let shootingTargetRoom = null;
+    const roomsData = [
+        null,
+        { id: 1, connections: { east: 2, south: 6 }, hazards: [] },
+        { id: 2, connections: { west: 1, east: 3, south: 7 }, hazards: [] },
+        { id: 3, connections: { west: 2, east: 4, south: 8 }, hazards: ['bat'] },
+        { id: 4, connections: { west: 3, east: 5, south: 9 }, hazards: [] },
+        { id: 5, connections: { west: 4, south: 10 }, hazards: ['pit'] },
+        { id: 6, connections: { north: 1, east: 7, south: 11 }, hazards: [] },
+        { id: 7, connections: { north: 2, west: 6, east: 8, south: 12 }, hazards: ['bat'] },
+        { id: 8, connections: { north: 3, west: 7, east: 9, south: 13 }, hazards: [] },
+        { id: 9, connections: { north: 4, west: 8, east: 10, south: 14 }, hazards: ['pit'] },
+        { id: 10, connections: { north: 5, west: 9, south: 15 }, hazards: [] },
+        { id: 11, connections: { north: 6, east: 12, south: 16 }, hazards: ['wumpus'] },
+        { id: 12, connections: { north: 7, west: 11, east: 13, south: 17 }, hazards: [] },
+        { id: 13, connections: { north: 8, west: 12, east: 14, south: 18 }, hazards: ['pit'] },
+        { id: 14, connections: { north: 9, west: 13, east: 15, south: 19 }, hazards: [] },
+        { id: 15, connections: { north: 10, west: 14, south: 20 }, hazards: ['bat'] },
+        { id: 16, connections: { north: 11, east: 17 }, hazards: [] },
+        { id: 17, connections: { north: 12, west: 16, east: 18 }, hazards: [] },
+        { id: 18, connections: { north: 13, west: 17, east: 19 }, hazards: ['pit'] },
+        { id: 19, connections: { north: 14, west: 18, east: 20 }, hazards: [] },
+        { id: 20, connections: { north: 15, west: 19 }, hazards: [] }
+    ];
+    const roomPositions = [
+        null,
+        { row: 1, col: 1 }, { row: 1, col: 2 }, { row: 1, col: 3 }, { row: 1, col: 4 }, { row: 1, col: 5 },
+        { row: 2, col: 1 }, { row: 2, col: 2 }, { row: 2, col: 3 }, { row: 2, col: 4 }, { row: 2, col: 5 },
+        { row: 3, col: 1 }, { row: 3, col: 2 }, { row: 3, col: 3 }, { row: 3, col: 4 }, { row: 3, col: 5 },
+        { row: 4, col: 1 }, { row: 4, col: 2 }, { row: 4, col: 3 }, { row: 4, col: 4 }, { row: 4, col: 5 }
+    ];
+    function displayMessage(message, type = 'info') {
+        gameMessageArea.textContent = message;
+        gameMessageArea.classList.remove('text-red-600', 'text-green-600', 'text-amber-600', 'text-gray-700');
+        switch(type) {
+            case 'error':
+                gameMessageArea.classList.add('text-red-600');
+                break;
+            case 'success':
+                gameMessageArea.classList.add('text-green-600');
+                break;
+            case 'warning':
+                gameMessageArea.classList.add('text-amber-600');
+                break;
+            default:
+                gameMessageArea.classList.add('text-gray-700');
+        }
+    }
+    function createCaveRooms() {
+        caveGridDisplay.innerHTML = '';
+        connectionsSvg.innerHTML = '';
+        const roomElements = {};
+        for (let i = 1; i <= NUM_ROOMS; i++) {
+            const roomData = roomsData[i];
+            const pos = roomPositions[i];
+            if (!roomData || !pos) continue;
+            const roomDiv = document.createElement('div');
+            roomDiv.classList.add('cave-room');
+            roomDiv.id = `room-${roomData.id}`;
+            roomDiv.textContent = roomData.id;
+            roomDiv.style.gridRowStart = pos.row;
+            roomDiv.style.gridColumnStart = pos.col;
+            if (roomData.hazards.length > 0) {
+                const hazardIcon = document.createElement('span');
+                hazardIcon.classList.add('material-icons', 'hazard-icon');
+                if (roomData.hazards.includes('wumpus')) {
+                    hazardIcon.textContent = 'bug_report';
+                    roomDiv.classList.add('wumpus');
+                } else if (roomData.hazards.includes('pit')) {
+                    hazardIcon.textContent = 'dangerous';
+                    roomDiv.classList.add('pit');
+                } else if (roomData.hazards.includes('bat')) {
+                    hazardIcon.textContent = 'flutter_dash';
+                    roomDiv.classList.add('bat');
+                }
+                roomDiv.textContent = '';
+                roomDiv.appendChild(hazardIcon);
+            }
+            if (roomData.id === playerRoom) {
+                const playerDiv = document.createElement('div');
+                playerDiv.classList.add('player-indicator');
+                const playerIcon = document.createElement('span');
+                playerIcon.classList.add('material-icons');
+                playerIcon.textContent = 'person';
+                playerDiv.appendChild(playerIcon);
+                roomDiv.appendChild(playerDiv);
+            }
+            if (shootingMode) {
+                const currentRoomData = roomsData[playerRoom];
+                if (currentRoomData.connections && Object.values(currentRoomData.connections).includes(roomData.id)) {
+                    roomDiv.classList.add('shooting-targetable');
+                    roomDiv.addEventListener('click', () => selectShootingTarget(roomData.id));
+                }
+                if (roomData.id === shootingTargetRoom) {
+                    roomDiv.classList.add('shooting-selected');
+                }
+            }
+            caveGridDisplay.appendChild(roomDiv);
+            roomElements[roomData.id] = roomDiv;
+        }
+        requestAnimationFrame(() => {
+            drawConnections(roomElements);
+        });
+    }
+    function getRoomCenter(roomElement) {
+        if (!roomElement) return null;
+        const rect = roomElement.getBoundingClientRect();
+        const containerRect = caveGridDisplay.getBoundingClientRect();
+        return {
+            x: rect.left - containerRect.left + rect.width / 2,
+            y: rect.top - containerRect.top + rect.height / 2
+        };
+    }
+    function drawConnections(roomElements) {
+        connectionsSvg.innerHTML = '';
+        const drawnConnections = new Set();
+        for (let i = 1; i <= NUM_ROOMS; i++) {
+            const roomData = roomsData[i];
+            if (!roomData || !roomElements[i]) continue;
+            const startPos = getRoomCenter(roomElements[i]);
+            if (!startPos) continue;
+            for (const direction in roomData.connections) {
+                const connectedRoomId = roomData.connections[direction];
+                if (connectedRoomId && roomsData[connectedRoomId] && roomElements[connectedRoomId]) {
+                    const connectionKey = [i, connectedRoomId].sort((a, b) => a - b).join('-');
+                    if (drawnConnections.has(connectionKey)) {
+                        continue;
+                    }
+                    drawnConnections.add(connectionKey);
+                    const endPos = getRoomCenter(roomElements[connectedRoomId]);
+                    if (!endPos) continue;
+                    const startRoomGridPos = roomPositions[i];
+                    const endRoomGridPos = roomPositions[connectedRoomId];
+                    if ((startRoomGridPos.row === endRoomGridPos.row && Math.abs(startRoomGridPos.col - endRoomGridPos.col) === 1) ||
+                        (startRoomGridPos.col === endRoomGridPos.col && Math.abs(startRoomGridPos.row - endRoomGridPos.row) === 1)
+                    ) {
+                        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        line.setAttribute('x1', startPos.x);
+                        line.setAttribute('y1', startPos.y);
+                        line.setAttribute('x2', endPos.x);
+                        line.setAttribute('y2', endPos.y);
+                        line.setAttribute('stroke', '#4b5563');line.setAttribute('stroke-width', '4');
+                        connectionsSvg.appendChild(line);
+                    }
+                }
+            }
+        }
+    }
+    function updateStatus() {
+        currentRoomEl.textContent = playerRoom;
+        arrowCountEl.textContent = arrows;
+        hazardWarningEl.textContent = "";
+        const currentRoomData = roomsData[playerRoom];
+        if (!currentRoomData) return;
+        let warnings = [];
+        for (const direction in currentRoomData.connections) {
+            const adjRoomId = currentRoomData.connections[direction];
+            if (adjRoomId && roomsData[adjRoomId]) {
+                const adjRoomData = roomsData[adjRoomId];
+                if (adjRoomData.hazards.includes('wumpus')) warnings.push("I smell a Wumpus!");
+                if (adjRoomData.hazards.includes('pit')) warnings.push("I feel a draft!");
+                if (adjRoomData.hazards.includes('bat')) warnings.push("I hear flapping!");
+            }
+        }
+        hazardWarningEl.textContent = warnings.filter((value, index, self) => self.indexOf(value) === index).join(" ");
+        shootingTargetDisplayEl.textContent = shootingTargetRoom ? shootingTargetRoom : "None";
+        createCaveRooms();
+    }
+    function movePlayer(direction) {
+        const currentRoomData = roomsData[playerRoom];
+        if (!currentRoomData || !currentRoomData.connections) return;
+        const targetRoomId = currentRoomData.connections[direction.toLowerCase()];
+        if (shootingMode) {
+            if (targetRoomId && roomsData[targetRoomId]) {
+                selectShootingTarget(targetRoomId);
+                displayMessage(`Targeting room ${targetRoomId} for shooting.`, 'info');
+            } else {
+                displayMessage(`Cannot target ${direction} from room ${playerRoom}. No connection.`, 'warning');
+            }
+            return;
+        }
+        if (targetRoomId && roomsData[targetRoomId]) {
+            playerRoom = targetRoomId;
+            displayMessage(`Moved ${direction} to room ${playerRoom}.`);
+            checkHazards();
+            updateStatus();
+        } else {
+            displayMessage(`You can't go that way!`, 'warning');
+        }
+    }
+    function checkHazards() {
+        const room = roomsData[playerRoom];
+        if (!room) return;
+        if (room.hazards.includes('wumpus')) {
+            displayMessage("You've been eaten by the Wumpus! Game Over.", 'error');
+            restartGame();
+        } else if (room.hazards.includes('pit')) {
+            displayMessage("You fell into a pit! Game Over.", 'error');
+            restartGame();
+        } else if (room.hazards.includes('bat')) {
+            displayMessage("Super Bats whisk you away to another room!", 'warning');
+            const randomRoom = Math.floor(Math.random() * NUM_ROOMS) + 1;
+            playerRoom = randomRoom;
+            // Recursive call to checkHazards in new room, but prevent infinite loop
+            // by ensuring it's not another bat room or limit recursion depth.
+            // For simplicity, we'll just display the bat message and let next move trigger new check.
+        }
+    }
+    function toggleShootingMode() {
+        shootingMode = !shootingMode;
+        shootingTargetRoom = null;
+        if (shootingMode) {
+            if (arrows <= 0) {
+                displayMessage("You have no arrows left!", 'error');
+                shootingMode = false;
+                return;
+            }
+            gameBody.classList.add('shooting-mode');
+            shootingModeStatusEl.style.display = 'block';
+            shootRoomInput.value = '';
+            displayMessage("Shooting mode activated. Select a target.", 'info');
+        } else {
+            gameBody.classList.remove('shooting-mode');
+            shootingModeStatusEl.style.display = 'none';
+            shootRoomInput.value = '';
+            displayMessage("Shooting mode deactivated.", 'info');
+        }
+        updateStatus();
+    }
+    function selectShootingTarget(roomId) {
+        if (!shootingMode) return;
+        const currentRoomData = roomsData[playerRoom];
+        if (currentRoomData.connections && Object.values(currentRoomData.connections).includes(roomId)) {
+            shootingTargetRoom = roomId;
+            shootRoomInput.value = roomId;
+            displayMessage(`Selected room ${roomId} for shooting.`, 'info');
+            updateStatus();
+        } else {
+            displayMessage(`Cannot target room ${roomId} - not connected.`, 'warning');
+        }
+    }
+    function fireShot() {
+        if (!shootingMode || shootingTargetRoom === null) {
+            displayMessage("Please select a connected room to shoot into.", 'warning');
+            return;
+        }
+        if (arrows > 0) {
+            arrows--;
+            displayMessage(`Shot an arrow into room ${shootingTargetRoom}!`);
+            const targetRoomData = roomsData[shootingTargetRoom];
+            if (targetRoomData.hazards.includes('wumpus')) {
+                displayMessage("Congratulations! You shot the Wumpus! You Win!", 'success');
+                restartGame();
+                return;
+            } else {
+                displayMessage("Missed!", 'info');
+            }
+            if (Math.random() < 0.75) { // 75% chance Wumpus moves
+                const wumpusRoom = roomsData.find(r => r && r.hazards.includes('wumpus'));
+                if (wumpusRoom) {
+                    const possibleMoves = Object.values(wumpusRoom.connections).filter(id => id !== null);
+                    if (possibleMoves.length > 0) {
+                        const newWumpusRoomId = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+                        wumpusRoom.hazards = wumpusRoom.hazards.filter(h => h !== 'wumpus');
+                        if (roomsData[newWumpusRoomId]) {
+                            roomsData[newWumpusRoomId].hazards.push('wumpus');
+                            displayMessage("You hear a thumping noise... the Wumpus has moved!", 'warning');
+                        }
+                    }
+                }
+            }
+            toggleShootingMode(); // Exit shooting mode after shot
+            updateStatus();
+            if (arrows === 0 && !(roomsData[playerRoom] && roomsData[playerRoom].hazards.includes('wumpus'))) {
+                displayMessage("You are out of arrows! Game Over.", 'error');
+                shootArrowButton.disabled = true;
+                confirmShotButton.disabled = true;
+            }
+        }
+        shootingTargetRoom = null; // Reset target
+        shootRoomInput.value = '';
+    }
+    document.getElementById('move-north').addEventListener('click', () => movePlayer('north'));
+    document.getElementById('move-east').addEventListener('click', () => movePlayer('east'));
+    document.getElementById('move-south').addEventListener('click', () => movePlayer('south'));
+    document.getElementById('move-west').addEventListener('click', () => movePlayer('west'));
+    shootArrowButton.addEventListener('click', toggleShootingMode);
+    confirmShotButton.addEventListener('click', fireShot);
+    cancelShotButton.addEventListener('click', toggleShootingMode);
+    document.addEventListener('keydown', (event) => {
+        if (!shootingMode) return;
+        const currentRoomData = roomsData[playerRoom];
+        if (!currentRoomData || !currentRoomData.connections) return;
+        let targetRoomId = null;
+        let directionKey = null;
+        switch(event.key) {
+            case 'ArrowUp':
+                targetRoomId = currentRoomData.connections.north;
+                directionKey = 'north';
+                event.preventDefault();
+                break;
+            case 'ArrowDown':
+                targetRoomId = currentRoomData.connections.south;
+                directionKey = 'south';
+                event.preventDefault();
+                break;
+            case 'ArrowLeft':
+                targetRoomId = currentRoomData.connections.west;
+                directionKey = 'west';
+                event.preventDefault();
+                break;
+            case 'ArrowRight':
+                targetRoomId = currentRoomData.connections.east;
+                directionKey = 'east';
+                event.preventDefault();
+                break;
+            case 'Enter':
+                if (shootingTargetRoom !== null) {
+                    fireShot();
+                }
+                event.preventDefault();
+                break;
+            case 'Escape':
+                toggleShootingMode();
+                event.preventDefault();
+                break;
+        }
+        if (targetRoomId !== null && roomsData[targetRoomId]) {
+            selectShootingTarget(targetRoomId);
+        } else if (directionKey) {
+            displayMessage(`No connection in direction ${directionKey} for shooting.`, 'warning');
+        }
+    });
+    function restartGame() {
+        playerRoom = 1;
+        arrows = 3;
+        shootingMode = false;
+        shootingTargetRoom = null;
+        gameBody.classList.remove('shooting-mode');
+        shootingModeStatusEl.style.display = 'none';
+        shootRoomInput.value = '';
+        shootArrowButton.disabled = false;
+        confirmShotButton.disabled = false;
+        const originalRoomsData = [
+            null,
+            { id: 1, connections: { east: 2, south: 6 }, hazards: [] },
+            { id: 2, connections: { west: 1, east: 3, south: 7 }, hazards: [] },
+            { id: 3, connections: { west: 2, east: 4, south: 8 }, hazards: ['bat'] },
+            { id: 4, connections: { west: 3, east: 5, south: 9 }, hazards: [] },
+            { id: 5, connections: { west: 4, south: 10 }, hazards: ['pit'] },
+            { id: 6, connections: { north: 1, east: 7, south: 11 }, hazards: [] },
+            { id: 7, connections: { north: 2, west: 6, east: 8, south: 12 }, hazards: ['bat'] },
+            { id: 8, connections: { north: 3, west: 7, east: 9, south: 13 }, hazards: [] },
+            { id: 9, connections: { north: 4, west: 8, east: 10, south: 14 }, hazards: ['pit'] },
+            { id: 10, connections: { north: 5, west: 9, south: 15 }, hazards: [] },
+            { id: 11, connections: { north: 6, east: 12, south: 16 }, hazards: ['wumpus'] },
+            { id: 12, connections: { north: 7, west: 11, east: 13, south: 17 }, hazards: [] },
+            { id: 13, connections: { north: 8, west: 12, east: 14, south: 18 }, hazards: ['pit'] },
+            { id: 14, connections: { north: 9, west: 13, east: 15, south: 19 }, hazards: [] },
+            { id: 15, connections: { north: 10, west: 14, south: 20 }, hazards: ['bat'] },
+            { id: 16, connections: { north: 11, east: 17 }, hazards: [] },
+            { id: 17, connections: { north: 12, west: 16, east: 18 }, hazards: [] },
+            { id: 18, connections: { north: 13, west: 17, east: 19 }, hazards: ['pit'] },
+            { id: 19, connections: { north: 14, west: 18, east: 20 }, hazards: [] },
+            { id: 20, connections: { north: 15, west: 19 }, hazards: [] }
+        ];
+        for (let i = 1; i <= NUM_ROOMS; i++) {
+            if (roomsData[i] && originalRoomsData[i]) {
+                roomsData[i].hazards = [...originalRoomsData[i].hazards];
+            }
+        }
+        displayMessage("Game Restarted! Welcome back to the hunt.", 'info');
+        updateStatus();
+    }
+    document.getElementById('restart-game').addEventListener('click', restartGame);
+    updateStatus();
+    displayMessage("Welcome to Hunt the Wumpus! Use arrow keys or buttons to move. Find and shoot the Wumpus before it finds you or you run out of arrows!"); // Initial message
+    window.addEventListener('resize', () => {
+        const roomElements = {};
+        caveGridDisplay.querySelectorAll('.cave-room').forEach(el => {
+            const id = parseInt(el.id.split('-')[1]);
+            roomElements[id] = el;
+        });
+        if (Object.keys(roomElements).length > 0) {
+            drawConnections(roomElements);
+        } else {
+            createCaveRooms();
+        }
+    });
+</script>
+
+</body></html>
