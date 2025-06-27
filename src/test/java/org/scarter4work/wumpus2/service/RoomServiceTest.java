@@ -72,6 +72,7 @@ class RoomServiceTest {
         UUID roomId = UUID.randomUUID();
         Room mockRoom = new Room();
         mockRoom.setId(roomId);
+        mockRoom.setRoomNumber(1);
         
         when(roomRepository.findById(roomId)).thenReturn(Optional.of(mockRoom));
 
@@ -91,10 +92,13 @@ class RoomServiceTest {
         
         Room room1 = new Room();
         room1.setId(UUID.randomUUID());
+        room1.setRoomNumber(1);
+        room1.setRoomNumber(1);
         mockRooms.add(room1);
         
         Room room2 = new Room();
         room2.setId(UUID.randomUUID());
+        room2.setRoomNumber(2);
         mockRooms.add(room2);
         
         when(roomRepository.findAll()).thenReturn(mockRooms);
@@ -129,9 +133,11 @@ class RoomServiceTest {
         
         Room mockRoom1 = new Room();
         mockRoom1.setId(room1Id);
+        mockRoom1.setRoomNumber(1);
         
         Room mockRoom2 = new Room();
         mockRoom2.setId(room2Id);
+        mockRoom2.setRoomNumber(2);
         
         when(gameRoomRepository.findByGameId(gameId)).thenReturn(mockGameRooms);
         when(roomRepository.findById(room1Id)).thenReturn(Optional.of(mockRoom1));
@@ -155,6 +161,7 @@ class RoomServiceTest {
         
         Room room1 = new Room();
         room1.setId(UUID.randomUUID());
+        room1.setRoomNumber(1);
         room1.setHasWumpus(true);
         mockRooms.add(room1);
         
@@ -177,6 +184,7 @@ class RoomServiceTest {
         
         Room room1 = new Room();
         room1.setId(UUID.randomUUID());
+        room1.setRoomNumber(1);
         room1.setHasPit(true);
         mockRooms.add(room1);
         
@@ -205,6 +213,7 @@ class RoomServiceTest {
         
         Room room1 = new Room();
         room1.setId(UUID.randomUUID());
+        room1.setRoomNumber(1);
         room1.setHasBats(true);
         mockRooms.add(room1);
         
@@ -221,22 +230,42 @@ class RoomServiceTest {
     }
 
     @Test
-    void createCaveSystem() {
+    void placeRandomHazards() {
         // Arrange
-        when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> {
-            Room room = invocation.getArgument(0);
-            if (room.getId() == null) {
-                room.setId(UUID.randomUUID());
-            }
-            return room;
+        UUID gameId = UUID.randomUUID();
+        List<Room> mockRooms = new ArrayList<>();
+        
+        // Create 25 mock rooms for testing
+        for (int i = 1; i <= 25; i++) {
+            Room room = new Room();
+            room.setId(UUID.randomUUID());
+            room.setRoomNumber(i);
+            mockRooms.add(room);
+        }
+        
+        List<GameRoom> mockGameRooms = new ArrayList<>();
+        for (Room room : mockRooms) {
+            GameRoom gameRoom = new GameRoom();
+            gameRoom.setGameId(gameId);
+            gameRoom.setRoomId(room.getId());
+            mockGameRooms.add(gameRoom);
+        }
+        
+        when(gameRoomRepository.findByGameId(gameId)).thenReturn(mockGameRooms);
+        when(roomRepository.findById(any(UUID.class))).thenAnswer(invocation -> {
+            UUID roomId = invocation.getArgument(0);
+            return mockRooms.stream()
+                    .filter(r -> r.getId().equals(roomId))
+                    .findFirst();
         });
+        when(roomRepository.saveAll(any(List.class))).thenReturn(mockRooms);
 
         // Act
-        List<Room> result = roomService.createCaveSystem(10);
+        boolean result = roomService.placeRandomHazards(gameId);
 
         // Assert
-        assertNotNull(result);
-        assertEquals(10, result.size());
-        verify(roomRepository, times(20)).save(any(Room.class)); // Initial save + connections save
+        assertTrue(result);
+        verify(gameRoomRepository, times(1)).findByGameId(gameId);
+        verify(roomRepository, times(1)).saveAll(any(List.class));
     }
 }

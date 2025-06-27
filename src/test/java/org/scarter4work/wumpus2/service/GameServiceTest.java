@@ -49,9 +49,10 @@ class GameServiceTest {
 
         // Mock room creation
         List<Room> mockRooms = new ArrayList<>();
-        for (int i = 0; i < 5; i++) {
+        for (int i = 1; i <= 25; i++) {
             Room room = new Room();
             room.setId(UUID.randomUUID());
+            room.setRoomNumber(i);
             mockRooms.add(room);
         }
 
@@ -90,9 +91,9 @@ class GameServiceTest {
         // Assert
         assertNotNull(result);
         assertEquals(playerName, result.getPlayerName());
-        verify(gameRepository, times(1)).save(any(Game.class));
-        verify(roomRepository, atLeast(5)).save(any(Room.class));
-        verify(gameRoomRepository, atLeast(5)).save(any(GameRoom.class));
+        verify(gameRepository, atLeast(1)).save(any(Game.class));
+        verify(roomRepository, atLeast(25)).save(any(Room.class));
+        verify(gameRoomRepository, atLeast(25)).save(any(GameRoom.class));
     }
 
     @Test
@@ -152,9 +153,11 @@ class GameServiceTest {
 
         Room currentRoom = new Room();
         currentRoom.setId(UUID.randomUUID());
+        currentRoom.setRoomNumber(1);
 
         Room northRoom = new Room();
         northRoom.setId(UUID.randomUUID());
+        northRoom.setRoomNumber(2);
         currentRoom.setNorthRoomId(northRoom.getId());
 
         Game mockGame = new Game();
@@ -195,6 +198,7 @@ class GameServiceTest {
 
         Room mockRoom = new Room();
         mockRoom.setId(UUID.randomUUID());
+        mockRoom.setRoomNumber(1);
 
         Game mockGame = new Game();
         mockGame.setId(gameId);

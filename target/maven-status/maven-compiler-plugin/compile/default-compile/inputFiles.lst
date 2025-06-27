@@ -1,0 +1,15 @@
+/mnt/e/attemp/wumpus-ai/src/main/java/org/scarter4work/wumpus2/Wumpus2Application.java
+/mnt/e/attemp/wumpus-ai/src/main/java/org/scarter4work/wumpus2/config/WebConfig.java
+/mnt/e/attemp/wumpus-ai/src/main/java/org/scarter4work/wumpus2/controller/GameController.java
+/mnt/e/attemp/wumpus-ai/src/main/java/org/scarter4work/wumpus2/controller/RoomController.java
+/mnt/e/attemp/wumpus-ai/src/main/java/org/scarter4work/wumpus2/controller/WebController.java
+/mnt/e/attemp/wumpus-ai/src/main/java/org/scarter4work/wumpus2/model/Game.java
+/mnt/e/attemp/wumpus-ai/src/main/java/org/scarter4work/wumpus2/model/GameRoom.java
+/mnt/e/attemp/wumpus-ai/src/main/java/org/scarter4work/wumpus2/model/GameVisitedRoom.java
+/mnt/e/attemp/wumpus-ai/src/main/java/org/scarter4work/wumpus2/model/Room.java
+/mnt/e/attemp/wumpus-ai/src/main/java/org/scarter4work/wumpus2/repository/GameRepository.java
+/mnt/e/attemp/wumpus-ai/src/main/java/org/scarter4work/wumpus2/repository/GameRoomRepository.java
+/mnt/e/attemp/wumpus-ai/src/main/java/org/scarter4work/wumpus2/repository/GameVisitedRoomRepository.java
+/mnt/e/attemp/wumpus-ai/src/main/java/org/scarter4work/wumpus2/repository/RoomRepository.java
+/mnt/e/attemp/wumpus-ai/src/main/java/org/scarter4work/wumpus2/service/GameService.java
+/mnt/e/attemp/wumpus-ai/src/main/java/org/scarter4work/wumpus2/service/RoomService.java

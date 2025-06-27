@@ -39,10 +39,12 @@ class RoomControllerTest {
         
         Room room1 = new Room();
         room1.setId(UUID.randomUUID());
+        room1.setRoomNumber(1);
         mockRooms.add(room1);
         
         Room room2 = new Room();
         room2.setId(UUID.randomUUID());
+        room2.setRoomNumber(2);
         mockRooms.add(room2);
 
         when(roomService.getRoomsForGame(gameId)).thenReturn(mockRooms);
@@ -84,6 +86,7 @@ class RoomControllerTest {
         UUID roomId = UUID.randomUUID();
         Room mockRoom = new Room();
         mockRoom.setId(roomId);
+        mockRoom.setRoomNumber(1);
 
         when(roomService.getRoom(roomId)).thenReturn(mockRoom);
 
@@ -104,6 +107,7 @@ class RoomControllerTest {
         
         Room room1 = new Room();
         room1.setId(UUID.randomUUID());
+        room1.setRoomNumber(1);
         room1.setHasWumpus(true);
         mockRooms.add(room1);
 
@@ -127,11 +131,13 @@ class RoomControllerTest {
         
         Room room1 = new Room();
         room1.setId(UUID.randomUUID());
+        room1.setRoomNumber(1);
         room1.setHasPit(true);
         mockRooms.add(room1);
         
         Room room2 = new Room();
         room2.setId(UUID.randomUUID());
+        room2.setRoomNumber(2);
         room2.setHasPit(true);
         mockRooms.add(room2);
 
@@ -156,11 +162,13 @@ class RoomControllerTest {
         
         Room room1 = new Room();
         room1.setId(UUID.randomUUID());
+        room1.setRoomNumber(1);
         room1.setHasBats(true);
         mockRooms.add(room1);
         
         Room room2 = new Room();
         room2.setId(UUID.randomUUID());
+        room2.setRoomNumber(2);
         room2.setHasBats(true);
         mockRooms.add(room2);
 

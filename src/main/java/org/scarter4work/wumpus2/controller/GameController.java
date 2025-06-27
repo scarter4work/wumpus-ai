@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -39,9 +38,7 @@ public class GameController {
      */
     @PostMapping
     public ResponseEntity<Game> createGame(@RequestBody CreateGameRequest request) {
-        log.info("Creating new game for player: {}", request.getPlayerName());
         Game game = gameService.createNewGame(request.getPlayerName());
-        log.info("Game created with ID: {}", game.getId());
         return ResponseEntity.ok(game);
     }
 
@@ -53,35 +50,12 @@ public class GameController {
      */
     @GetMapping("/{gameId}/state")
     public ResponseEntity<GameStateResponse> getGameState(@PathVariable UUID gameId) {
-        log.info("Getting game state for game ID: {}", gameId);
         Game game = gameService.getGame(gameId);
         Room currentRoom = gameService.getCurrentRoom(gameId);
-        log.info("Current room for game {}: {}", gameId, currentRoom.getId());
-        Map<String, UUID> adjacentRooms = gameService.getAdjacentRooms(gameId);
-
-        // Get hazard information
-        Map<String, Boolean> hazardInfo = new HashMap<>();
-        hazardInfo.put("wumpusNearby", false);
-        hazardInfo.put("pitNearby", false);
-        hazardInfo.put("batsNearby", false);
-
-        // Check adjacent rooms for hazards
-        for (UUID roomId : adjacentRooms.values()) {
-            if (roomId != null) {
-                Room room = roomService.getRoom(roomId);
-                if (room.isHasWumpus()) {
-                    hazardInfo.put("wumpusNearby", true);
-                }
-                if (room.isHasPit()) {
-                    hazardInfo.put("pitNearby", true);
-                }
-                if (room.isHasBats()) {
-                    hazardInfo.put("batsNearby", true);
-                }
-            }
-        }
-
-        GameStateResponse response = new GameStateResponse(game, currentRoom, hazardInfo, gameService.getVisitedRooms(gameId));
+        Set<UUID> visitedRooms = gameService.getVisitedRooms(gameId);
+        Map<String, Boolean> hazardInfo = gameService.getHazardInformation(gameId);
+        
+        GameStateResponse response = new GameStateResponse(game, currentRoom, hazardInfo, visitedRooms);
         return ResponseEntity.ok(response);
     }
 
@@ -96,35 +70,12 @@ public class GameController {
     public ResponseEntity<GameStateResponse> movePlayer(
             @PathVariable UUID gameId,
             @RequestBody MoveRequest request) {
-        log.info("Moving player in game {} to direction: {}", gameId, request.getDirection());
         Game game = gameService.movePlayer(gameId, request.getDirection());
         Room currentRoom = gameService.getCurrentRoom(gameId);
-        log.info("Player moved to room: {} in game: {}", currentRoom.getId(), gameId);
-        Map<String, UUID> adjacentRooms = gameService.getAdjacentRooms(gameId);
-
-        // Get hazard information
-        Map<String, Boolean> hazardInfo = new HashMap<>();
-        hazardInfo.put("wumpusNearby", false);
-        hazardInfo.put("pitNearby", false);
-        hazardInfo.put("batsNearby", false);
-
-        // Check adjacent rooms for hazards
-        for (UUID roomId : adjacentRooms.values()) {
-            if (roomId != null) {
-                Room room = roomService.getRoom(roomId);
-                if (room.isHasWumpus()) {
-                    hazardInfo.put("wumpusNearby", true);
-                }
-                if (room.isHasPit()) {
-                    hazardInfo.put("pitNearby", true);
-                }
-                if (room.isHasBats()) {
-                    hazardInfo.put("batsNearby", true);
-                }
-            }
-        }
-
-        GameStateResponse response = new GameStateResponse(game, currentRoom, hazardInfo, gameService.getVisitedRooms(gameId));
+        Set<UUID> visitedRooms = gameService.getVisitedRooms(gameId);
+        Map<String, Boolean> hazardInfo = gameService.getHazardInformation(gameId);
+        
+        GameStateResponse response = new GameStateResponse(game, currentRoom, hazardInfo, visitedRooms);
         return ResponseEntity.ok(response);
     }
 
@@ -139,35 +90,12 @@ public class GameController {
     public ResponseEntity<GameStateResponse> shootArrow(
             @PathVariable UUID gameId,
             @RequestBody ShootRequest request) {
-        log.info("Shooting arrow in game {} to direction: {}", gameId, request.getDirection());
         Game game = gameService.shootArrow(gameId, request.getDirection());
         Room currentRoom = gameService.getCurrentRoom(gameId);
-        log.info("Arrow shot from room: {} in game: {}, game status: {}", currentRoom.getId(), gameId, game.getStatus());
-        Map<String, UUID> adjacentRooms = gameService.getAdjacentRooms(gameId);
-
-        // Get hazard information
-        Map<String, Boolean> hazardInfo = new HashMap<>();
-        hazardInfo.put("wumpusNearby", false);
-        hazardInfo.put("pitNearby", false);
-        hazardInfo.put("batsNearby", false);
-
-        // Check adjacent rooms for hazards
-        for (UUID roomId : adjacentRooms.values()) {
-            if (roomId != null) {
-                Room room = roomService.getRoom(roomId);
-                if (room.isHasWumpus()) {
-                    hazardInfo.put("wumpusNearby", true);
-                }
-                if (room.isHasPit()) {
-                    hazardInfo.put("pitNearby", true);
-                }
-                if (room.isHasBats()) {
-                    hazardInfo.put("batsNearby", true);
-                }
-            }
-        }
-
-        GameStateResponse response = new GameStateResponse(game, currentRoom, hazardInfo, gameService.getVisitedRooms(gameId));
+        Set<UUID> visitedRooms = gameService.getVisitedRooms(gameId);
+        Map<String, Boolean> hazardInfo = gameService.getHazardInformation(gameId);
+        
+        GameStateResponse response = new GameStateResponse(game, currentRoom, hazardInfo, visitedRooms);
         return ResponseEntity.ok(response);
     }
 

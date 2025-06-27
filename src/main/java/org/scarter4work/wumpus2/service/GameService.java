@@ -28,6 +28,7 @@ public class GameService {
     private final RoomRepository roomRepository;
     private final GameRoomRepository gameRoomRepository;
     private final GameVisitedRoomRepository gameVisitedRoomRepository;
+    
     @Autowired
     public GameService(GameRepository gameRepository, RoomRepository roomRepository,
                        GameRoomRepository gameRoomRepository, GameVisitedRoomRepository gameVisitedRoomRepository) {
@@ -48,23 +49,35 @@ public class GameService {
         // Create a set of rooms for the cave system
         List<Room> rooms = createCaveSystem();
 
-        // Choose a random room as the starting point (that doesn't have hazards)
-        Room startingRoom = findSafeStartingRoom(rooms);
-
-        // Create the game
-        Game game = Game.createNewGame(playerName, startingRoom.getId());
-
-        // Save the game first to get the generated ID
+        // Create the game first to get an ID
+        Game game = new Game();
+        game.setPlayerName(playerName);
+        game.setStartTime(LocalDateTime.now());
+        game.setStatus(Game.GameStatus.IN_PROGRESS);
+        game.setArrowsRemaining(5);
+        
+        // Temporarily set to first room - will be updated after hazard placement
+        game.setCurrentRoomId(rooms.get(0).getId());
         game = gameRepository.save(game);
-
-        // Now mark the starting room as visited (after game has an ID)
-        markRoomAsVisited(game.getId(), startingRoom.getId());
 
         // Associate all rooms with the game
         for (Room room : rooms) {
             GameRoom gameRoom = GameRoom.createGameRoom(game.getId(), room.getId());
             gameRoomRepository.save(gameRoom);
         }
+
+        // Place hazards randomly
+        placeRandomHazards(rooms);
+
+        // Now choose a safe starting room
+        Room startingRoom = findSafeStartingRoom(rooms);
+        
+        // Update the game with the safe starting room
+        game.setCurrentRoomId(startingRoom.getId());
+        game = gameRepository.save(game);
+
+        // Mark the starting room as visited
+        markRoomAsVisited(game.getId(), startingRoom.getId());
 
         return game;
     }
@@ -321,77 +334,108 @@ public class GameService {
      * @return List of rooms in the cave system
      */
     private List<Room> createCaveSystem() {
-        // Create 20 rooms for the cave
+        // Create 25 rooms for a 5x5 cave grid
         List<Room> rooms = new ArrayList<>();
-        for (int i = 0; i < 20; i++) {
+        
+        // Create rooms with room numbers 1-25
+        for (int i = 1; i <= 25; i++) {
             Room room = new Room();
+            room.setRoomNumber(i);
             rooms.add(roomRepository.save(room));
         }
 
-        // Connect the rooms in a dodecahedral structure (or simplified version)
-        // This is a simplified connection pattern - in a real implementation,
-        // you might want a more complex cave structure
+        // Connect the rooms in a 5x5 grid structure
         for (int i = 0; i < rooms.size(); i++) {
             Room room = rooms.get(i);
+            int roomNumber = i + 1; // Room numbers are 1-based
+            int row = (roomNumber - 1) / 5; // 0-based row (0-4)
+            int col = (roomNumber - 1) % 5; // 0-based column (0-4)
 
-            // Connect to 3-4 other rooms
-            room.setNorthRoomId(rooms.get((i + 1) % rooms.size()).getId());
-            room.setEastRoomId(rooms.get((i + 5) % rooms.size()).getId());
-            room.setSouthRoomId(rooms.get((i + 10) % rooms.size()).getId());
+            // Connect to adjacent rooms in the grid
+            // North connection (row - 1)
+            if (row > 0) {
+                int northRoomNumber = roomNumber - 5;
+                room.setNorthRoomId(rooms.get(northRoomNumber - 1).getId());
+            }
 
-            // Not all rooms have a west connection
-            if (i % 2 == 0) {
-                room.setWestRoomId(rooms.get((i + 15) % rooms.size()).getId());
+            // South connection (row + 1)
+            if (row < 4) {
+                int southRoomNumber = roomNumber + 5;
+                room.setSouthRoomId(rooms.get(southRoomNumber - 1).getId());
+            }
+
+            // East connection (col + 1)
+            if (col < 4) {
+                int eastRoomNumber = roomNumber + 1;
+                room.setEastRoomId(rooms.get(eastRoomNumber - 1).getId());
+            }
+
+            // West connection (col - 1)
+            if (col > 0) {
+                int westRoomNumber = roomNumber - 1;
+                room.setWestRoomId(rooms.get(westRoomNumber - 1).getId());
             }
 
             roomRepository.save(room);
         }
 
-        // Place hazards
-        placeHazards(rooms);
-
+        // Note: Hazards are placed separately via the API call after game creation
         return rooms;
     }
 
     /**
-     * Places hazards (Wumpus, pits, bats) in the cave system.
+     * Places hazards (Wumpus, pits, bats) randomly in the cave system.
      *
      * @param rooms List of rooms in the cave system
      */
-    private void placeHazards(List<Room> rooms) {
-        Random random = new Random();
+    private void placeRandomHazards(List<Room> rooms) {
+        if (rooms.isEmpty()) {
+            throw new IllegalStateException("No rooms found for hazard placement");
+        }
+
+        // Validate we have enough rooms for all hazards (1 wumpus + 3 pits + 3 bats = 7 minimum)
+        if (rooms.size() < 7) {
+            throw new IllegalStateException("Not enough rooms to place all hazards");
+        }
+
+        // Clear any existing hazards
+        rooms.forEach(room -> {
+            room.setHasWumpus(false);
+            room.setHasPit(false);
+            room.setHasBats(false);
+        });
+
+        // Create shuffled list of room indices to ensure random placement without conflicts
+        List<Integer> availableIndices = new ArrayList<>();
+        for (int i = 0; i < rooms.size(); i++) {
+            availableIndices.add(i);
+        }
+        Collections.shuffle(availableIndices);
+
+        int indexCounter = 0;
 
         // Place 1 Wumpus
-        int wumpusIndex = random.nextInt(rooms.size());
-        Room wumpusRoom = rooms.get(wumpusIndex);
+        Room wumpusRoom = rooms.get(availableIndices.get(indexCounter++));
         wumpusRoom.setHasWumpus(true);
-        roomRepository.save(wumpusRoom);
+        log.info("Placed Wumpus in room {}", wumpusRoom.getRoomNumber());
 
         // Place 3 pits
         for (int i = 0; i < 3; i++) {
-            int pitIndex;
-            do {
-                pitIndex = random.nextInt(rooms.size());
-            } while (rooms.get(pitIndex).isHasWumpus() || rooms.get(pitIndex).isHasPit());
-
-            Room pitRoom = rooms.get(pitIndex);
+            Room pitRoom = rooms.get(availableIndices.get(indexCounter++));
             pitRoom.setHasPit(true);
-            roomRepository.save(pitRoom);
+            log.info("Placed pit in room {}", pitRoom.getRoomNumber());
         }
 
         // Place 3 bat colonies
         for (int i = 0; i < 3; i++) {
-            int batIndex;
-            do {
-                batIndex = random.nextInt(rooms.size());
-            } while (rooms.get(batIndex).isHasWumpus() || 
-                    rooms.get(batIndex).isHasPit() || 
-                    rooms.get(batIndex).isHasBats());
-
-            Room batRoom = rooms.get(batIndex);
+            Room batRoom = rooms.get(availableIndices.get(indexCounter++));
             batRoom.setHasBats(true);
-            roomRepository.save(batRoom);
+            log.info("Placed bats in room {}", batRoom.getRoomNumber());
         }
+
+        // Save all rooms in a single batch operation
+        roomRepository.saveAll(rooms);
+        log.info("Successfully placed all hazards randomly");
     }
 
     /**
@@ -401,22 +445,36 @@ public class GameService {
      * @return A safe room
      */
     private Room findSafeStartingRoom(List<Room> rooms) {
+        Random random = new Random();
+        
+        // Find all safe rooms (no hazards)
+        List<Room> safeRooms = new ArrayList<>();
         for (Room room : rooms) {
             if (!room.isHasWumpus() && !room.isHasPit() && !room.isHasBats()) {
-                return room;
+                safeRooms.add(room);
             }
         }
+        
+        if (!safeRooms.isEmpty()) {
+            // Randomly select from safe rooms
+            return safeRooms.get(random.nextInt(safeRooms.size()));
+        }
 
-        // If no completely safe room is found (unlikely with 20 rooms and 7 hazards),
-        // return the first room without a Wumpus or pit
+        // If no completely safe room is found (unlikely with 25 rooms and 7 hazards),
+        // find rooms without Wumpus or pit and randomly select one
+        List<Room> noDeadlyHazards = new ArrayList<>();
         for (Room room : rooms) {
             if (!room.isHasWumpus() && !room.isHasPit()) {
-                return room;
+                noDeadlyHazards.add(room);
             }
         }
+        
+        if (!noDeadlyHazards.isEmpty()) {
+            return noDeadlyHazards.get(random.nextInt(noDeadlyHazards.size()));
+        }
 
-        // Fallback to the first room
-        return rooms.get(0);
+        // Extremely unlikely fallback - just return a random room
+        return rooms.get(random.nextInt(rooms.size()));
     }
 
     // Add helper methods
@@ -438,5 +496,54 @@ public class GameService {
                 .stream()
                 .map(GameVisitedRoom::getRoomId)
                 .collect(Collectors.toSet());
+    }
+
+    /**
+     * Gets hazard information for adjacent rooms.
+     * 
+     * @param gameId The ID of the game
+     * @return Map of hazard types to their presence in adjacent rooms
+     */
+    public Map<String, Boolean> getHazardInformation(UUID gameId) {
+        Room currentRoom = getCurrentRoom(gameId);
+        Map<String, Boolean> hazardInfo = new HashMap<>();
+        
+        // Initialize all hazard indicators to false
+        hazardInfo.put("wumpusNearby", false);
+        hazardInfo.put("pitNearby", false);
+        hazardInfo.put("batsNearby", false);
+        
+        // Check all adjacent rooms for hazards
+        List<UUID> adjacentRoomIds = new ArrayList<>();
+        if (currentRoom.getNorthRoomId() != null) {
+            adjacentRoomIds.add(currentRoom.getNorthRoomId());
+        }
+        if (currentRoom.getEastRoomId() != null) {
+            adjacentRoomIds.add(currentRoom.getEastRoomId());
+        }
+        if (currentRoom.getSouthRoomId() != null) {
+            adjacentRoomIds.add(currentRoom.getSouthRoomId());
+        }
+        if (currentRoom.getWestRoomId() != null) {
+            adjacentRoomIds.add(currentRoom.getWestRoomId());
+        }
+        
+        // Check each adjacent room for hazards
+        for (UUID roomId : adjacentRoomIds) {
+            Room adjacentRoom = roomRepository.findById(roomId).orElse(null);
+            if (adjacentRoom != null) {
+                if (adjacentRoom.isHasWumpus()) {
+                    hazardInfo.put("wumpusNearby", true);
+                }
+                if (adjacentRoom.isHasPit()) {
+                    hazardInfo.put("pitNearby", true);
+                }
+                if (adjacentRoom.isHasBats()) {
+                    hazardInfo.put("batsNearby", true);
+                }
+            }
+        }
+        
+        return hazardInfo;
     }
 }

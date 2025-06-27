@@ -1,0 +1,6 @@
+org/scarter4work/wumpus2/service/RoomServiceTest.class
+org/scarter4work/wumpus2/controller/GameControllerTest.class
+org/scarter4work/wumpus2/controller/WebControllerTest.class
+org/scarter4work/wumpus2/controller/RoomControllerTest.class
+org/scarter4work/wumpus2/service/GameServiceTest.class
+org/scarter4work/wumpus2/Wumpus2ApplicationTests.class

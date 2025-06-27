@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import java.util.UUID;
 
 /**
@@ -20,6 +21,11 @@ public class Room {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    /**
+     * The numerical identifier for this room (1-25 for a 5x5 grid).
+     */
+    @Column(nullable = true)
+    private Integer roomNumber;
 
     /**
      * ID of the room connected to the north.
@@ -63,72 +69,6 @@ public class Room {
     @Column(nullable = false)
     private boolean hasBats = false;
 
-    // Getters and Setters
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-
-    public UUID getNorthRoomId() {
-        return northRoomId;
-    }
-
-    public void setNorthRoomId(UUID northRoomId) {
-        this.northRoomId = northRoomId;
-    }
-
-    public UUID getEastRoomId() {
-        return eastRoomId;
-    }
-
-    public void setEastRoomId(UUID eastRoomId) {
-        this.eastRoomId = eastRoomId;
-    }
-
-    public UUID getSouthRoomId() {
-        return southRoomId;
-    }
-
-    public void setSouthRoomId(UUID southRoomId) {
-        this.southRoomId = southRoomId;
-    }
-
-    public UUID getWestRoomId() {
-        return westRoomId;
-    }
-
-    public void setWestRoomId(UUID westRoomId) {
-        this.westRoomId = westRoomId;
-    }
-
-    public boolean isHasWumpus() {
-        return hasWumpus;
-    }
-
-    public void setHasWumpus(boolean hasWumpus) {
-        this.hasWumpus = hasWumpus;
-    }
-
-    public boolean isHasPit() {
-        return hasPit;
-    }
-
-    public void setHasPit(boolean hasPit) {
-        this.hasPit = hasPit;
-    }
-
-    public boolean isHasBats() {
-        return hasBats;
-    }
-
-    public void setHasBats(boolean hasBats) {
-        this.hasBats = hasBats;
-    }
-
     /**
      * Creates a new room with the specified connections.
      * 
@@ -140,14 +80,11 @@ public class Room {
      */
     public static Room createRoom(UUID northRoomId, UUID eastRoomId, 
                                  UUID southRoomId, UUID westRoomId) {
-        log.info("Creating new room with connections - North: {}, East: {}, South: {}, West: {}", 
-                northRoomId, eastRoomId, southRoomId, westRoomId);
         Room room = new Room();
         room.setNorthRoomId(northRoomId);
         room.setEastRoomId(eastRoomId);
         room.setSouthRoomId(southRoomId);
         room.setWestRoomId(westRoomId);
-        log.info("New room created");
         return room;
     }
 }

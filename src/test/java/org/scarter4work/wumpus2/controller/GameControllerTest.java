@@ -68,6 +68,7 @@ class GameControllerTest {
         
         Room mockRoom = new Room();
         mockRoom.setId(UUID.randomUUID());
+        mockRoom.setRoomNumber(1);
         
         Map<String, Boolean> mockHazardInfo = new HashMap<>();
         mockHazardInfo.put("wumpus", false);
@@ -80,6 +81,7 @@ class GameControllerTest {
         when(gameService.getGame(gameId)).thenReturn(mockGame);
         when(gameService.getCurrentRoom(gameId)).thenReturn(mockRoom);
         when(gameService.getVisitedRooms(gameId)).thenReturn(mockVisitedRooms);
+        when(gameService.getHazardInformation(gameId)).thenReturn(mockHazardInfo);
         
         // Act
         ResponseEntity<GameController.GameStateResponse> response = gameController.getGameState(gameId);
@@ -108,6 +110,7 @@ class GameControllerTest {
         
         Room mockRoom = new Room();
         mockRoom.setId(UUID.randomUUID());
+        mockRoom.setRoomNumber(1);
         
         Map<String, Boolean> mockHazardInfo = new HashMap<>();
         mockHazardInfo.put("wumpus", false);
@@ -120,6 +123,7 @@ class GameControllerTest {
         when(gameService.movePlayer(gameId, "north")).thenReturn(mockGame);
         when(gameService.getCurrentRoom(gameId)).thenReturn(mockRoom);
         when(gameService.getVisitedRooms(gameId)).thenReturn(mockVisitedRooms);
+        when(gameService.getHazardInformation(gameId)).thenReturn(mockHazardInfo);
         
         // Act
         ResponseEntity<GameController.GameStateResponse> response = gameController.movePlayer(gameId, request);
@@ -148,6 +152,7 @@ class GameControllerTest {
         
         Room mockRoom = new Room();
         mockRoom.setId(UUID.randomUUID());
+        mockRoom.setRoomNumber(1);
         
         Map<String, Boolean> mockHazardInfo = new HashMap<>();
         mockHazardInfo.put("wumpus", false);
@@ -160,6 +165,7 @@ class GameControllerTest {
         when(gameService.shootArrow(gameId, "north")).thenReturn(mockGame);
         when(gameService.getCurrentRoom(gameId)).thenReturn(mockRoom);
         when(gameService.getVisitedRooms(gameId)).thenReturn(mockVisitedRooms);
+        when(gameService.getHazardInformation(gameId)).thenReturn(mockHazardInfo);
         
         // Act
         ResponseEntity<GameController.GameStateResponse> response = gameController.shootArrow(gameId, request);
